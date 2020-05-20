@@ -13,9 +13,16 @@ import at.tugraz.asd.LANG.Messages.out.VocabularyOut;
 import at.tugraz.asd.LANG.Model.VocabularyModel;
 import at.tugraz.asd.LANG.Service.VocabularyService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 @CrossOrigin("*")
@@ -158,5 +165,36 @@ public class VocabularyController {
         });
 
         return ResponseEntity.ok(ret);
+    }
+
+    @GetMapping  (path = "Export")
+    public ResponseEntity exportBackup(){
+        try{
+            File backup = service.exportVocabulary();
+
+            Path path = Paths.get(backup.getAbsolutePath());
+            ByteArrayResource resource = new ByteArrayResource(Files.readAllBytes(path));
+
+            return ResponseEntity.ok()
+                    .contentLength(backup.length())
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(resource);
+        }
+        catch (Exception e){
+            System.out.println("Fehler beim Exportieren");
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @PostMapping (path = "Import")
+    public ResponseEntity importBackup(@RequestParam("file") MultipartFile Backup_File){
+        try{
+            service.importVocabulary(Backup_File);
+            return ResponseEntity.ok(null);
+        }
+        catch (Exception e){
+            System.out.println("Error Importing File" + e);
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 }

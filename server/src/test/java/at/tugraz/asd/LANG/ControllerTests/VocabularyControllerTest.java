@@ -18,10 +18,16 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.multipart.MultipartFile;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.eq;
@@ -29,11 +35,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @RunWith(SpringRunner.class)
@@ -42,6 +53,10 @@ public class VocabularyControllerTest {
 
     @Autowired
     private MockMvc mvc;
+
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+
 
     @MockBean
     private VocabularyService service;
@@ -200,6 +215,31 @@ public class VocabularyControllerTest {
 
     //Get Data
     }
+
+    @Test
+    public void exportBackup() throws Exception {
+
+            File backup = service.exportVocabulary();
+            Path path = Paths.get(backup.getAbsolutePath());
+            ByteArrayResource resource = new ByteArrayResource(Files.readAllBytes(path));
+
+            mvc.perform(put("/api/vocabulary/Export")
+                    .content(asJsonString(resource))
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
+    }
+
+        @Test
+        public void ImportBackup() throws Exception {
+            MockMultipartFile csvFile = new MockMultipartFile("file", "backup.csv", MediaType.TEXT_PLAIN_VALUE, "backup.csv".getBytes());
+
+            MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+            mockMvc.perform(MockMvcRequestBuilders.multipart("/import")
+                    .file(csvFile)
+                    .param("file"))
+                    .andExpect(status().is(200))
+                    .andExpect(content().string("success"));
+        }
 /*
     @Test
     public void testEditNotExistingVocabulary() throws Exception
